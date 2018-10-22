@@ -29,6 +29,13 @@
         [event setEventHandledBy:self];
     }];
     
+    NSString * str1 = [NSString stringWithFormat:@"%@",@"1"];
+    NSMutableSet * set = [NSMutableSet set];
+    [set addObject:str1];
+    NSString * str2 = [NSString stringWithFormat:@"%@",@"1"];
+    [set removeObject:str2];
+    NSLog(@"set = %@",set);
+    
     DWEvent * e1 = [DWEvent new];
     e1.eventName = @"Login";
     DWEvent * e2 = [DWEvent new];

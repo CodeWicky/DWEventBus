@@ -27,10 +27,6 @@
 }
 
 -(BOOL)valid {
-    return !self.target ? NO : [self validIgnoreTarget];
-}
-
--(BOOL)validIgnoreTarget {
     return (!self.eventName.length) ? NO : ((self.subType < 0 && self.subType != -1) ? NO : YES);
 }
 
@@ -63,7 +59,7 @@
 
 @property (nonatomic ,strong) NSMutableSet * uniteEvents;
 
-@property (nonatomic ,strong) NSMutableDictionary * conditions;
+@property (nonatomic ,strong) NSMutableSet * conditions;
 
 @property (nonatomic ,strong) dispatch_semaphore_t sema;
 
@@ -75,13 +71,14 @@
 
 #pragma mark --- interface method ---
 -(void)receiveEvent:(__kindof DWEvent *)event {
-    ///联合事件等待事件都接收到再处理，单独事件直接处理
     if (self.eventHandler) {
+        ///联合事件等待事件都接收到再处理，单独事件直接处理
         if (self.uniteEvents.count) {
+            ///每接受到一个事件则从条件中移除一个事件
             dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
             NSString * key = keyForEvent(event);
-            [self.conditions removeObjectForKey:key];
-            if (self.conditions.allKeys.count == 0) {
+            [self.conditions removeObject:key];
+            if (self.conditions.count == 0) {
                 [self doEventHanlerWithEvent:event];
                 [self configCondition];
             }
@@ -97,7 +94,7 @@
     [self.uniteEvents enumerateObjectsUsingBlock:^(DWEvent * obj, BOOL * _Nonnull stop) {
         @autoreleasepool {
             NSString * key = keyForEvent(obj);
-            [self.conditions setValue:obj forKey:key];
+            [self.conditions addObject:key];
         }
     }];
 }
@@ -131,9 +128,9 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     [self configCondition];
 }
 
--(NSMutableDictionary *)conditions {
+-(NSMutableSet *)conditions {
     if (!_conditions) {
-        _conditions = [NSMutableDictionary dictionary];
+        _conditions = [NSMutableSet set];
     }
     return _conditions;
 }
@@ -248,6 +245,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     return sub;
 }
 
+///接收到事件以后分发给对应的entity
 -(void)receiveEvent:(__kindof DWEvent *)event {
     dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
     NSDictionary * subType = [self.eventsMap valueForKey:event.eventName];
@@ -259,6 +257,8 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 }
 
 #pragma mark --- tool method ---
+
+///移除bus中所有包含此sub的d项
 -(void)disposeHanlder {
     [self.eventsMap enumerateKeysAndObjectsUsingBlock:^(NSString * key, id  _Nonnull obj, BOOL * _Nonnull stop) {
         NSMutableSet * subs = [self.bus.subscribersMap valueForKey:key];
@@ -355,7 +355,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 -(DWEventMaker *(^)(__kindof DWEvent *))UniteEvent {
     return ^DWEventMaker *(__kindof DWEvent * event) {
-        if ([event validIgnoreTarget]) {
+        if ([event valid]) {
             [self._uniteEvents addObject:event];
         }
         return self;
@@ -364,8 +364,8 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 -(void (^)(void))Build {
     return ^(void){
-        ///如果本次build存在组合事件则将忽略eventName和subType，直接使用组合事件
-        if (self._uniteEvents.count) {
+        ///如果本次build存在联合事件则将忽略eventName和subType，直接使用联合事件
+        if (self._uniteEvents.count > 1) {
             if (!self._target) {
                 [self reset];
                 return ;
@@ -373,6 +373,19 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
             DWEvent * e = [DWEvent new];
             e.target = self._target;
             e.uniteEvents = self._uniteEvents;
+            e.queue = self._queue;
+            [self.events addObject:e];
+            [self reset];
+        } else if (self._uniteEvents.count == 1) {
+            ///只有一个联合事件，降级为普通事件
+            if (!self._target) {
+                [self reset];
+                return;
+            }
+            DWEvent * e = [DWEvent new];
+            e.target = self._target;
+            e.eventName = [[self._uniteEvents anyObject] eventName];
+            e.subType = [[self._uniteEvents anyObject] subType];
             e.queue = self._queue;
             [self.events addObject:e];
             [self reset];
