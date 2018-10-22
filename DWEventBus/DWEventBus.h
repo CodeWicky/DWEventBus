@@ -28,6 +28,8 @@
 
 -(void)setEventHandledBy:(id)flag;
 
+-(BOOL)valid;
+
 @end
 
 #define dw_Build() Target(self).Build()
@@ -41,6 +43,8 @@
 @property (nonatomic ,strong ,readonly) DWEventMaker *(^SubType)(NSInteger subType);
 
 @property (nonatomic ,strong ,readonly) DWEventMaker *(^Queue)(dispatch_queue_t queue);
+
+@property (nonatomic ,strong ,readonly) DWEventMaker *(^UniteEvent)(__kindof DWEvent * event);
 
 @property (nonatomic ,strong ,readonly) void(^Build)(void);
 
