@@ -20,14 +20,14 @@
  sample:
  
  [[DWEventBus defaultEventBus] subscribe:^(DWEventMaker *maker) {
- maker.EventName(@"Login").Queue(dispatch_queue_create("com.DWEventBus.receiveQueue", NULL)).dw_Build();
- } On:^(__kindof DWEvent *event ,id target) {
-    NSLog(@"Receive Login Event On Thread:%@",[NSThread currentThread]);
+    maker.EventName(@"Login").dw_Build();
+ } On:^(__kindof DWEvent *event, id subscribeTarget) {
+    NSLog(@"收到事件了");
  }];
  
- DWEvent * event = [DWEvent new];
- event.eventName = @"Login";
- [[DWEventBus defaultEventBus] dispatchEvent:event];
+ [[DWEventBus defaultEventBus] dispatch:^(DWEventMaker *maker) {
+    maker.EventName(@"Login").dw_Build();
+ }];
  
  version 1.0.0
  提供强弱类型支持、提供队列支持、提供联合事件和批量事件支持、提供销毁时自动移除订阅支持

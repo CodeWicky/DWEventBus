@@ -274,6 +274,7 @@
     ///普通写法，仅指定主类型事件，事件接收是默认在事件发送的线程
     ///无法收到消息，因为发送消息的总线不是订阅的总线
     ///多个总线分开工作，互不影响
+    
     DWEvent * event = [DWEvent new];
     event.eventName = @"Login";
     self.bus = [DWEventBus new];
