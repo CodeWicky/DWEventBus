@@ -7,17 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9B235382217F14CA003C1948 /* DWEventBus.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B235381217F14CA003C1948 /* DWEventBus.m */; };
 		9B472F03217DAC7600657C7D /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B472F02217DAC7600657C7D /* AppDelegate.m */; };
 		9B472F06217DAC7600657C7D /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B472F05217DAC7600657C7D /* ViewController.m */; };
 		9B472F09217DAC7600657C7D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9B472F07217DAC7600657C7D /* Main.storyboard */; };
 		9B472F0B217DAC7800657C7D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9B472F0A217DAC7800657C7D /* Assets.xcassets */; };
 		9B472F0E217DAC7800657C7D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9B472F0C217DAC7800657C7D /* LaunchScreen.storyboard */; };
 		9B472F11217DAC7800657C7D /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B472F10217DAC7800657C7D /* main.m */; };
-		9B472F19217DACB200657C7D /* DWEventBus.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B472F18217DACB200657C7D /* DWEventBus.m */; };
 		9B472F1C217DE16E00657C7D /* A.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B472F1B217DE16E00657C7D /* A.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		9B235380217F14CA003C1948 /* DWEventBus.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DWEventBus.h; path = ../../DWEventBus/DWEventBus.h; sourceTree = "<group>"; };
+		9B235381217F14CA003C1948 /* DWEventBus.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = DWEventBus.m; path = ../../DWEventBus/DWEventBus.m; sourceTree = "<group>"; };
 		9B472EFE217DAC7600657C7D /* DWEventBus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DWEventBus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B472F01217DAC7600657C7D /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		9B472F02217DAC7600657C7D /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -28,8 +30,6 @@
 		9B472F0D217DAC7800657C7D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9B472F0F217DAC7800657C7D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9B472F10217DAC7800657C7D /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		9B472F17217DACB200657C7D /* DWEventBus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DWEventBus.h; sourceTree = "<group>"; };
-		9B472F18217DACB200657C7D /* DWEventBus.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DWEventBus.m; sourceTree = "<group>"; };
 		9B472F1A217DE16E00657C7D /* A.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = A.h; sourceTree = "<group>"; };
 		9B472F1B217DE16E00657C7D /* A.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = A.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -68,13 +68,13 @@
 				9B472F02217DAC7600657C7D /* AppDelegate.m */,
 				9B472F04217DAC7600657C7D /* ViewController.h */,
 				9B472F05217DAC7600657C7D /* ViewController.m */,
+				9B235380217F14CA003C1948 /* DWEventBus.h */,
+				9B235381217F14CA003C1948 /* DWEventBus.m */,
 				9B472F07217DAC7600657C7D /* Main.storyboard */,
 				9B472F0A217DAC7800657C7D /* Assets.xcassets */,
 				9B472F0C217DAC7800657C7D /* LaunchScreen.storyboard */,
 				9B472F0F217DAC7800657C7D /* Info.plist */,
 				9B472F10217DAC7800657C7D /* main.m */,
-				9B472F17217DACB200657C7D /* DWEventBus.h */,
-				9B472F18217DACB200657C7D /* DWEventBus.m */,
 				9B472F1A217DE16E00657C7D /* A.h */,
 				9B472F1B217DE16E00657C7D /* A.m */,
 			);
@@ -152,9 +152,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				9B472F1C217DE16E00657C7D /* A.m in Sources */,
+				9B235382217F14CA003C1948 /* DWEventBus.m in Sources */,
 				9B472F06217DAC7600657C7D /* ViewController.m in Sources */,
 				9B472F11217DAC7800657C7D /* main.m in Sources */,
-				9B472F19217DACB200657C7D /* DWEventBus.m in Sources */,
 				9B472F03217DAC7600657C7D /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
