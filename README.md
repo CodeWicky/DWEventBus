@@ -1,6 +1,4 @@
-<p align="center" >
-<font size="20">DWEventBus</font>
-</p>
+# DWEventBus
 
 ## 描述
 这是一个灵活的事件总线。
