@@ -47,7 +47,7 @@
         e.eventName = @"Login";
         
         NSLog(@"可以收到事件");
-        [[DWEventBus defaultEventBus] dispatchEvent:e];
+        [[DWEventBus defaultEventBus] publishEvent:e];
         self.a = nil;
     });
     
@@ -56,7 +56,7 @@
         e.eventName = @"Login";
         
         NSLog(@"不可以收到事件");
-        [[DWEventBus defaultEventBus] dispatchEvent:e];
+        [[DWEventBus defaultEventBus] publishEvent:e];
     });
 }
 
@@ -79,8 +79,8 @@
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         NSLog(@"均可以收到事件");
-        [[DWEventBus defaultEventBus] dispatchEvent:e1];
-        [[DWEventBus defaultEventBus] dispatchEvent:e2];
+        [[DWEventBus defaultEventBus] publishEvent:e1];
+        [[DWEventBus defaultEventBus] publishEvent:e2];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -89,8 +89,8 @@
         }];
         
         NSLog(@"均不能收到事件");
-        [[DWEventBus defaultEventBus] dispatchEvent:e1];
-        [[DWEventBus defaultEventBus] dispatchEvent:e2];
+        [[DWEventBus defaultEventBus] publishEvent:e1];
+        [[DWEventBus defaultEventBus] publishEvent:e2];
     });
     
     
@@ -117,7 +117,7 @@
     }];
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [[DWEventBus defaultEventBus] dispatch:^(DWEventMaker *maker) {
+        [[DWEventBus defaultEventBus] publish:^(DWEventMaker *maker) {
             maker.UniteEvent(e1).UniteEvent(e2).Build();
         }];
     });
@@ -128,7 +128,7 @@
         }];
         
         NSLog(@"不会影响事件收发，因为移除的事件与订阅事件不同。");
-        [[DWEventBus defaultEventBus] dispatchEvent:e1];
+        [[DWEventBus defaultEventBus] publishEvent:e1];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -138,8 +138,8 @@
         [[DWEventBus defaultEventBus] removeEvent:e target:self];
         
         NSLog(@"均不会收到事件");
-        [[DWEventBus defaultEventBus] dispatchEvent:e1];
-        [[DWEventBus defaultEventBus] dispatchEvent:e2];
+        [[DWEventBus defaultEventBus] publishEvent:e1];
+        [[DWEventBus defaultEventBus] publishEvent:e2];
     });
 }
 
@@ -167,13 +167,13 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         DWEvent * e1 = [DWEvent new];
         e1.eventName = @"Login";
-        [[DWEventBus defaultEventBus] dispatchEvent:e1];
+        [[DWEventBus defaultEventBus] publishEvent:e1];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         DWEvent * e2 = [DWEvent new];
         e2.eventName = @"Regist";
-        [[DWEventBus defaultEventBus] dispatchEvent:e2];
+        [[DWEventBus defaultEventBus] publishEvent:e2];
     });
 }
 
@@ -198,7 +198,7 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         
         NSLog(@"事件都将接收完成");
-        [[DWEventBus defaultEventBus] dispatch:^(DWEventMaker *maker) {
+        [[DWEventBus defaultEventBus] publish:^(DWEventMaker *maker) {
             maker.UniteEvent(e1).UniteEvent(e2).Build();
         }];
     });
@@ -209,7 +209,7 @@
         e1.eventName = @"Regist";
         
         NSLog(@"联合事件不会完成，因为还差Login事件的发送");
-        [[DWEventBus defaultEventBus] dispatchEvent:e1];
+        [[DWEventBus defaultEventBus] publishEvent:e1];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -219,7 +219,7 @@
         e2.subType = 0;
         
         NSLog(@"联合事件不会完成，因为Login事件的subType指定为0，而订阅时为缺醒subType（-1）。");
-        [[DWEventBus defaultEventBus] dispatchEvent:e2];
+        [[DWEventBus defaultEventBus] publishEvent:e2];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -227,7 +227,7 @@
         e3.eventName = @"Login";
         
         NSLog(@"联合事件将会完成。");
-        [[DWEventBus defaultEventBus] dispatchEvent:e3];
+        [[DWEventBus defaultEventBus] publishEvent:e3];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(7 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -235,7 +235,7 @@
         e4.eventName = @"Test";
         
         NSLog(@"事件不会触发，因为若单挑语句中含有联合事件，则该条语句中的EventName及SubType将被忽略");
-        [[DWEventBus defaultEventBus] dispatchEvent:e4];
+        [[DWEventBus defaultEventBus] publishEvent:e4];
     });
 }
 
@@ -259,13 +259,13 @@
         DWEvent * event = [DWEvent new];
         event.eventName = @"Login";
         event.queue = dispatch_queue_create("com.DWEventBus.dispatchQueue", NULL);
-        [[DWEventBus defaultEventBus] dispatchEvent:event];
+        [[DWEventBus defaultEventBus] publishEvent:event];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         DWEvent * event = [DWEvent new];
         event.eventName = @"Login";
-        [[DWEventBus defaultEventBus] dispatchEvent:event];
+        [[DWEventBus defaultEventBus] publishEvent:event];
     });
 }
 
@@ -291,7 +291,7 @@
         };
         
         NSLog(@"无法收到消息，因为发送消息的总线不是订阅的总线");
-        [[DWEventBus defaultEventBus] dispatchEvent:event];
+        [[DWEventBus defaultEventBus] publishEvent:event];
     });
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -301,7 +301,7 @@
             NSLog(@"Login event has been handled by %@",flag);
         };
         NSLog(@"可以接受消息，因为发送与订阅是同一个总线");
-        [self.bus dispatchEvent:event];
+        [self.bus publishEvent:event];
         self.bus = nil;
     });
 }

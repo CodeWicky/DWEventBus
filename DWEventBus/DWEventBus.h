@@ -25,17 +25,13 @@
     NSLog(@"收到事件了");
  }];
  
- [[DWEventBus defaultEventBus] dispatch:^(DWEventMaker *maker) {
+ [[DWEventBus defaultEventBus] publish:^(DWEventMaker *maker) {
     maker.EventName(@"Login").dw_Build();
  }];
  
  version 1.0.0
  提供强弱类型支持、提供队列支持、提供联合事件和批量事件支持、提供销毁时自动移除订阅支持
- 修复自动移除时无法移除bus上对应sub的bug
- subType赋值强制不小于0
- 修复remove逻辑，完成remove对uniteEvent的支持
- 完成联合事件的移除其中一个事件后该联合事件对应的所有事件均移除
- 完成多总线独立分发消息
+ 多总线独立分发消息
  */
 
 #import <Foundation/Foundation.h>
@@ -110,9 +106,9 @@
 -(void)subscribeEvent:(__kindof DWEvent *)event target:(id)target On:(void(^)(__kindof DWEvent * event,id subscribeTarget))handleEvent;
 
 ///以工厂发送事件（可以发送普通或联合事件。联合事件发送意为每一个事件都对应发一次，且无先后顺序）
--(void)dispatch:(void(^)(DWEventMaker * maker))makeEvent;
+-(void)publish:(void(^)(DWEventMaker * maker))makeEvent;
 ///发送一个普通事件
--(void)dispatchEvent:(__kindof DWEvent *)event;
+-(void)publishEvent:(__kindof DWEvent *)event;
 
 ///移除一个事件订阅（移除同一事件的所有订阅（eventName和subType具相同即视为一个事件），若移除订阅的联合事件中的任意一个事件订阅该事件则被移除，则联合事件不能再接收信号。移除一个联合事件意为分别移除每一个事件而不是移除对应的联合事件，故移除联合事件后对应的普通事件也将无法接收信号）
 -(void)remove:(void(^)(DWEventMaker * maker))makeEvent;

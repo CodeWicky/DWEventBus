@@ -567,7 +567,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     dispatch_semaphore_signal(self.sema);
 }
 
--(void)dispatch:(void (^)(DWEventMaker *))makeEvent {
+-(void)publish:(void (^)(DWEventMaker *))makeEvent {
     if (!makeEvent) {
         return;
     }
@@ -580,15 +580,15 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     [maker.events enumerateObjectsUsingBlock:^(__kindof DWEvent * _Nonnull obj, BOOL * _Nonnull stop) {
         if (obj.uniteEvents.count) {
             [obj.uniteEvents enumerateObjectsUsingBlock:^(__kindof DWEvent * subObj, BOOL * _Nonnull stop) {
-                [self dispatchEvent:subObj];
+                [self publishEvent:subObj];
             }];
         } else {
-            [self dispatchEvent:obj];
+            [self publishEvent:obj];
         }
     }];
 }
 
--(void)dispatchEvent:(DWEvent *)event {
+-(void)publishEvent:(DWEvent *)event {
     ///没有事件类型不做操作
     if (![event valid]) {
         return;
