@@ -11,7 +11,7 @@
 @implementation A
 
 -(void)dealloc {
-    NSLog(@"a dealloc");
+    NSLog(@"A dealloc");
 }
 
 @end

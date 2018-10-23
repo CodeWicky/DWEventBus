@@ -9,6 +9,7 @@
 #import "DWEventBus.h"
 #import <objc/runtime.h>
 
+///事件基类
 @interface DWEvent ()
 
 @property (nonatomic ,strong) id target;
@@ -38,6 +39,13 @@
     return self;
 }
 
+#pragma mark --- setter/getter ---
+-(void)setSubType:(NSInteger)subType {
+    if (subType >= 0) {
+        _subType = subType;
+    }
+}
+
 @end
 
 @interface DWEventBus ()
@@ -53,65 +61,69 @@
 ///实际保存事件的实例
 @interface DWEventEntity : NSObject
 
-@property (nonatomic ,copy) void(^eventHandler)(__kindof DWEvent * event);
+@property (nonatomic ,copy) void(^eventHandler)(__kindof DWEvent * event,id target);
 
 @property (nonatomic ,strong) dispatch_queue_t queue;
 
-@property (nonatomic ,strong) NSMutableSet * uniteEvents;
+@property (nonatomic ,strong) NSMutableSet * uniteEvents_;
+
+@property (nonatomic ,strong) NSMutableSet * uniteEventKeys;
 
 @property (nonatomic ,strong) NSMutableSet * conditions;
 
 @property (nonatomic ,strong) dispatch_semaphore_t sema;
 
--(void)receiveEvent:(__kindof DWEvent *)event;
+-(void)receiveEvent:(__kindof DWEvent *)event target:(id)target;
+
+-(void)resetUniteCondition;
 
 @end
 
 @implementation DWEventEntity
 
 #pragma mark --- interface method ---
--(void)receiveEvent:(__kindof DWEvent *)event {
+-(void)receiveEvent:(__kindof DWEvent *)event target:(id)target {
     if (self.eventHandler) {
         ///联合事件等待事件都接收到再处理，单独事件直接处理
-        if (self.uniteEvents.count) {
+        if (self.uniteEventKeys.count) {
             ///每接受到一个事件则从条件中移除一个事件
             dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
             NSString * key = keyForEvent(event);
             [self.conditions removeObject:key];
             if (self.conditions.count == 0) {
-                [self doEventHanlerWithEvent:event];
+                [self doEventHanlerWithEvent:event target:target];
                 [self configCondition];
             }
             dispatch_semaphore_signal(self.sema);
         } else {
-            [self doEventHanlerWithEvent:event];
+            [self doEventHanlerWithEvent:event target:target];
         }
     }
 }
 
-#pragma mark --- tool method ---
--(void)configCondition {
-    [self.uniteEvents enumerateObjectsUsingBlock:^(DWEvent * obj, BOOL * _Nonnull stop) {
-        @autoreleasepool {
-            NSString * key = keyForEvent(obj);
-            [self.conditions addObject:key];
-        }
-    }];
+-(void)resetUniteCondition {
+    [self.conditions removeAllObjects];
+    [self configCondition];
 }
 
--(void)doEventHanlerWithEvent:(DWEvent *)event {
+#pragma mark --- tool method ---
+-(void)configCondition {
+    [self.conditions addObjectsFromArray:self.uniteEventKeys.allObjects];
+}
+
+-(void)doEventHanlerWithEvent:(DWEvent *)event target:(id)target {
     if (self.queue) {
         dispatch_async(self.queue, ^{
-            self.eventHandler(event);
+            self.eventHandler(event,target);
         });
     } else {
-        self.eventHandler(event);
+        self.eventHandler(event,target);
     }
 }
 
 #pragma mark --- tool func ---
 NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
-    return [NSString stringWithFormat:@"%@-%ld",event.eventName,event.subType];
+    return [NSString stringWithFormat:@"%@|%ld",event.eventName,event.subType];
 }
 
 #pragma mark --- override ---
@@ -124,8 +136,14 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 #pragma mark --- setter/getter ---
 -(void)setUniteEvents:(NSMutableSet *)uniteEvents {
-    _uniteEvents = uniteEvents;
-    [self configCondition];
+    [self.uniteEventKeys removeAllObjects];
+    [uniteEvents enumerateObjectsUsingBlock:^(__kindof DWEvent * obj, BOOL * _Nonnull stop) {
+        @autoreleasepool {
+            NSString * key = keyForEvent(obj);
+            [self.uniteEventKeys addObject:key];
+        }
+    }];
+    [self resetUniteCondition];
 }
 
 -(NSMutableSet *)conditions {
@@ -133,6 +151,13 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
         _conditions = [NSMutableSet set];
     }
     return _conditions;
+}
+
+-(NSMutableSet *)uniteEventKeys {
+    if (!_uniteEventKeys) {
+        _uniteEventKeys = [NSMutableSet set];
+    }
+    return _uniteEventKeys;
 }
 
 @end
@@ -171,12 +196,14 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     return [_target respondsToSelector:aSelector];
 }
 
+///因为要在集合中在添加或移除，此处代理相等性返回自身的判断
 - (BOOL)isEqual:(id)object {
-    return [_target isEqual:object];
+    return [super isEqual:object];
 }
 
+///hash也是
 - (NSUInteger)hash {
-    return [_target hash];
+    return [super hash];
 }
 
 - (Class)superclass {
@@ -213,14 +240,16 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 @end
 
-///对象管理所有时间的中间订阅者
+///对象管理所有事件的中间订阅者
 @interface DWEventSubscriber : NSObject
+
+@property (nonatomic ,weak) id target;
 
 @property (nonatomic ,strong) DWEventProxy * proxy;
 
 @property (nonatomic ,strong) NSMutableDictionary * eventsMap;
 
-@property (nonatomic ,strong) DWEventBus * bus;
+@property (nonatomic ,weak) DWEventBus * bus;
 
 @property (nonatomic ,strong) dispatch_semaphore_t sema;
 
@@ -238,6 +267,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     DWEventSubscriber * sub = objc_getAssociatedObject(target, [bus.uid UTF8String]);
     if (!sub) {
         sub = [DWEventSubscriber new];
+        sub.target = target;
         sub.bus = bus;
         sub.proxy = [DWEventProxy proxyWithTarget:sub];
         objc_setAssociatedObject(target, [bus.uid UTF8String], sub, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -251,7 +281,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     NSDictionary * subType = [self.eventsMap valueForKey:event.eventName];
     NSSet * entitys = [subType valueForKey:@(event.subType).stringValue];
     [entitys enumerateObjectsUsingBlock:^(DWEventEntity * _Nonnull obj, BOOL * _Nonnull stop) {
-        [obj receiveEvent:event];
+        [obj receiveEvent:event target:self.target];
     }];
     dispatch_semaphore_signal(self.sema);
 }
@@ -289,7 +319,10 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 @end
 
+///事件工厂
 @interface DWEventMaker ()
+
+@property (nonatomic ,assign) BOOL buildIgnoreTarget;
 
 @property (nonatomic ,strong) id _target;
 
@@ -299,9 +332,9 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 @property (nonatomic ,strong) dispatch_queue_t _queue;
 
-@property (nonatomic ,strong) NSMutableSet * _uniteEvents;
+@property (nonatomic ,strong) NSMutableSet <__kindof DWEvent *>* _uniteEvents;
 
-@property (nonatomic ,strong) NSMutableSet * events;
+@property (nonatomic ,strong) NSMutableSet <__kindof DWEvent *>* events;
 
 @end
 
@@ -319,7 +352,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 #pragma mark --- override ---
 -(instancetype)init {
     if (self = [super init]) {
-        self._subType = -1;
+        __subType = -1;
     }
     return self;
 }
@@ -341,7 +374,9 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 -(DWEventMaker *(^)(NSInteger))SubType {
     return ^DWEventMaker *(NSInteger subType) {
-        self._subType = subType;
+        if (subType >= 0) {
+            self._subType = subType;
+        }
         return self;
     };
 }
@@ -366,9 +401,11 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     return ^(void){
         ///如果本次build存在联合事件则将忽略eventName和subType，直接使用联合事件
         if (self._uniteEvents.count > 1) {
-            if (!self._target) {
-                [self reset];
-                return ;
+            if (!self.buildIgnoreTarget) {
+                if (!self._target) {
+                    [self reset];
+                    return ;
+                }
             }
             DWEvent * e = [DWEvent new];
             e.target = self._target;
@@ -378,20 +415,28 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
             [self reset];
         } else if (self._uniteEvents.count == 1) {
             ///只有一个联合事件，降级为普通事件
-            if (!self._target) {
-                [self reset];
-                return;
+            if (!self.buildIgnoreTarget) {
+                if (!self._target) {
+                    [self reset];
+                    return;
+                }
             }
             DWEvent * e = [DWEvent new];
             e.target = self._target;
-            e.eventName = [[self._uniteEvents anyObject] eventName];
-            e.subType = [[self._uniteEvents anyObject] subType];
+            e.eventName = [self._uniteEvents anyObject].eventName;
+            e.subType = [self._uniteEvents anyObject].subType;
             e.queue = self._queue;
             [self.events addObject:e];
             [self reset];
         } else {
             ///无效事件
-            if (!self._target || !self._eventName.length) {
+            if (!self.buildIgnoreTarget) {
+                if (!self._target) {
+                    [self reset];
+                    return;
+                }
+            }
+            if (!self._eventName.length) {
                 [self reset];
                 return ;
             }
@@ -411,14 +456,14 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
     };
 }
 
--(NSMutableSet *)_uniteEvents {
+-(NSMutableSet <__kindof DWEvent *>*)_uniteEvents {
     if (!__uniteEvents) {
         __uniteEvents = [NSMutableSet set];
     }
     return __uniteEvents;
 }
 
--(NSMutableSet *)events {
+-(NSMutableSet <__kindof DWEvent *>*)events {
     if (!_events) {
         _events = [NSMutableSet set];
     }
@@ -436,12 +481,13 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 @end
 
-static DWEventBus * defaultBus = nil;
+
 @implementation DWEventBus
 
 #pragma mark --- interface method ---
 
 +(instancetype)defaultEventBus {
+    static DWEventBus * defaultBus = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         defaultBus = [[DWEventBus alloc] init];
@@ -449,7 +495,7 @@ static DWEventBus * defaultBus = nil;
     return defaultBus;
 }
 
--(void)subscribe:(void (^)(DWEventMaker *))makeEvent On:(void (^)(__kindof DWEvent *))handleEvent {
+-(void)subscribe:(void (^)(DWEventMaker *))makeEvent On:(void (^)(__kindof DWEvent * ,id))handleEvent {
     ///没有事件或者没有回调均不作处理
     if (!makeEvent || !handleEvent) {
         return;
@@ -461,7 +507,6 @@ static DWEventBus * defaultBus = nil;
         return;
     }
     
-    dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
     ///事件合法，开始注册
     /*
      在Bus上注册,结构是
@@ -483,6 +528,7 @@ static DWEventBus * defaultBus = nil;
                   \eventName - {} -subType - []
                                   \subType - []
      */
+    dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
     [maker.events enumerateObjectsUsingBlock:^(DWEvent * obj, BOOL * _Nonnull stop) {
 
         ///取出观察者
@@ -508,15 +554,46 @@ static DWEventBus * defaultBus = nil;
     dispatch_semaphore_signal(self.sema);
 }
 
--(void)dispatch:(DWEvent *)event {
+-(void)subscribeEvent:(__kindof DWEvent *)event target:(id)target On:(void (^)(__kindof DWEvent *, id))handleEvent {
+    if (!target || ![event valid]) {
+        return;
+    }
+    dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
+    DWEventSubscriber * sub = [DWEventSubscriber subscriberWithTaget:target bus:self];
+    DWEventEntity * entity = [DWEventEntity new];
+    entity.eventHandler = handleEvent;
+    entity.queue = event.queue;
+    [self registEvent:event onSubscriber:sub entity:entity];
+    dispatch_semaphore_signal(self.sema);
+}
+
+-(void)dispatch:(void (^)(DWEventMaker *))makeEvent {
+    if (!makeEvent) {
+        return;
+    }
+    DWEventMaker * maker = [DWEventMaker new];
+    maker.buildIgnoreTarget = YES;
+    makeEvent(maker);
+    if (!maker.events.count) {
+        return;
+    }
+    [maker.events enumerateObjectsUsingBlock:^(__kindof DWEvent * _Nonnull obj, BOOL * _Nonnull stop) {
+        if (obj.uniteEvents.count) {
+            [obj.uniteEvents enumerateObjectsUsingBlock:^(__kindof DWEvent * subObj, BOOL * _Nonnull stop) {
+                [self dispatchEvent:subObj];
+            }];
+        } else {
+            [self dispatchEvent:obj];
+        }
+    }];
+}
+
+-(void)dispatchEvent:(DWEvent *)event {
     ///没有事件类型不做操作
-    if (!event.eventName.length) {
+    if (![event valid]) {
         return;
     }
-    ///副类型不合法，不做操作
-    if (event.subType < 0 && event.subType != -1) {
-        return;
-    }
+    
     ///派发事件
     dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
     NSSet <DWEventSubscriber *>* subs = [self.subscribersMap valueForKey:event.eventName];
@@ -532,49 +609,43 @@ static DWEventBus * defaultBus = nil;
     dispatch_semaphore_signal(self.sema);
 }
 
--(void)removeSubscriber:(void (^)(DWEventMaker *))makeEvent {
+-(void)remove:(void (^)(DWEventMaker *))makeEvent {
     ///没有生成s事件则不做操作
     if (!makeEvent) {
         return;
     }
     DWEventMaker * maker = [DWEventMaker new];
     makeEvent(maker);
-    ///事件没有target或eventName则不作处理
-    if (!maker._target || !maker._eventName.length) {
+    ///如果没有有效事件不作处理
+    if (!maker.events.count) {
         return;
     }
     
-    ///取出订阅者
-    DWEventSubscriber * sub = nil;
     dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
-    sub = [DWEventSubscriber subscriberWithTaget:maker._target bus:self];
-    if (!sub) {
-        dispatch_semaphore_signal(self.sema);
+    [maker.events enumerateObjectsUsingBlock:^(__kindof DWEvent * obj, BOOL * _Nonnull stop) {
+        ///取出订阅者
+        DWEventSubscriber * sub = [DWEventSubscriber subscriberWithTaget:obj.target bus:self];
+        if (obj.uniteEvents.count) {
+            [obj.uniteEvents enumerateObjectsUsingBlock:^(__kindof DWEvent * subObj, BOOL * _Nonnull stop) {
+                ///取消注册每一个事件
+                [self deregistEvent:subObj onSubscriber:sub];
+            }];
+        } else {
+            ///取消注册
+            [self deregistEvent:obj onSubscriber:sub];
+        }
+    }];
+    dispatch_semaphore_signal(self.sema);
+}
+
+-(void)removeEvent:(__kindof DWEvent *)event target:(id)target {
+    if (!target || ![event valid]) {
         return;
     }
-    ///如果是-1则代表未指定subType，则移除全部
-    if (maker._subType == -1) {
-        ///subcriber中移除所有实例
-        [sub.eventsMap removeObjectForKey:maker._eventName];
-        ///bus中移除对应sub
-        [self.subscribersMap[maker._eventName] removeObject:sub.proxy.target];
-        dispatch_semaphore_signal(self.sema);
-        return;
-    } else if (maker._subType >= 0) {
-        NSMutableDictionary * subType = sub.eventsMap[maker._eventName];
-        ///移除subTyper中的实例
-        if (subType) {
-            [subType removeObjectForKey:@(maker._subType).stringValue];
-        }
-        ///如果移除后没有弱类型了则移除bus中的sub
-        if (!subType.allKeys.count) {
-            [self.subscribersMap[maker._eventName] removeObject:sub.proxy];
-        }
-        dispatch_semaphore_signal(self.sema);
-        return;
-    } else {
-        dispatch_semaphore_signal(self.sema);
-    }
+    dispatch_semaphore_wait(self.sema, DISPATCH_TIME_FOREVER);
+    DWEventSubscriber * sub = [DWEventSubscriber subscriberWithTaget:target bus:self];
+    [self deregistEvent:event onSubscriber:sub];
+    dispatch_semaphore_signal(self.sema);
 }
 
 #pragma mark --- tool method ---
@@ -604,29 +675,50 @@ static DWEventBus * defaultBus = nil;
     [entitys addObject:entity];
 }
 
+-(void)deregistEvent:(__kindof DWEvent *)event onSubscriber:(DWEventSubscriber *)sub {
+    NSMutableDictionary * subTypeD = sub.eventsMap[event.eventName];
+    
+    ///获取二级所有实例（缺醒subType为-1）
+    NSString * subKey = @(event.subType).stringValue;
+    NSMutableSet * entitys = subTypeD[subKey];
+    
+    ///遍历即将移除的所有事件，检测其中的联合事件，若存在，移除联合事件在其他事件中的注册
+    [entitys enumerateObjectsUsingBlock:^(DWEventEntity * obj, BOOL * _Nonnull stop) {
+        ///存在即为联合事件
+        if (obj.uniteEventKeys.count) {
+            [obj.uniteEventKeys enumerateObjectsUsingBlock:^(NSString * uniteKey, BOOL * _Nonnull stop) {
+                ///拆分为eventName和subType
+                NSArray * keys = [uniteKey componentsSeparatedByString:@"|"];
+                if (keys.count == 2) {
+                    NSString * eventName = keys.firstObject;
+                    NSString * subType = keys.lastObject;
+                    ///找到联合事件在其他位置的订阅
+                    ///是自身则不删除，避免遍历崩溃，之后做统一删除
+                    NSMutableSet * tmpSet = sub.eventsMap[eventName][subType];
+                    if (![tmpSet isEqual:entitys]) {
+                        [tmpSet removeObject:obj];
+                    }
+                }
+            }];
+        }
+    }];
+    
+    ///移除subType中的实例
+    if (subTypeD) {
+        [subTypeD removeObjectForKey:@(event.subType).stringValue];
+    }
+    ///如果移除后没有弱类型了则移除bus中的sub
+    if (!subTypeD.allKeys.count) {
+        [self.subscribersMap[event.eventName] removeObject:sub.proxy];
+    }
+}
+
 #pragma mark --- override ---
 -(instancetype)init {
     if (self = [super init]) {
         _sema = dispatch_semaphore_create(1);
         _uid = [NSString stringWithFormat:@"%p",self];
     }
-    return self;
-}
-
-#pragma mark --- singleton ---
-+(instancetype)allocWithZone:(struct _NSZone *)zone {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        defaultBus = [super allocWithZone:zone];
-    });
-    return defaultBus;
-}
-
--(id)copyWithZone:(struct _NSZone *)zone {
-    return self;
-}
-
--(id)mutableCopyWithZone:(struct _NSZone *)zone {
     return self;
 }
 
