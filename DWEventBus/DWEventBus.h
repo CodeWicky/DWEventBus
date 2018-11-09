@@ -32,6 +32,9 @@
  version 1.0.0
  提供强弱类型支持、提供队列支持、提供联合事件和批量事件支持、提供销毁时自动移除订阅支持
  多总线独立分发消息
+ 
+ version 1.0.1
+ 去除冗余autoreleasePool
  */
 
 #import <Foundation/Foundation.h>

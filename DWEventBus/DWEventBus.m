@@ -138,10 +138,8 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 -(void)setUniteEvents:(NSMutableSet *)uniteEvents {
     [self.uniteEventKeys removeAllObjects];
     [uniteEvents enumerateObjectsUsingBlock:^(__kindof DWEvent * obj, BOOL * _Nonnull stop) {
-        @autoreleasepool {
-            NSString * key = keyForEvent(obj);
-            [self.uniteEventKeys addObject:key];
-        }
+        NSString * key = keyForEvent(obj);
+        [self.uniteEventKeys addObject:key];
     }];
     [self resetUniteCondition];
 }
