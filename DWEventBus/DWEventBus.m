@@ -288,7 +288,7 @@ NS_INLINE NSString * keyForEvent(__kindof DWEvent * event) {
 
 #pragma mark --- tool method ---
 
-///移除bus中所有包含此sub的d项
+///移除bus中所有包含此sub的项
 -(void)disposeHanlder {
     [self.eventsMap enumerateKeysAndObjectsUsingBlock:^(NSString * key, id  _Nonnull obj, BOOL * _Nonnull stop) {
         NSMutableSet * subs = [self.bus.subscribersMap valueForKey:key];
